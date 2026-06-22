@@ -3,11 +3,6 @@ import pool from '../config/db.js';
 const PUBLIC_COLUMNS =
   'user_id, first_name, last_name, email, role, created_at, updated_at';
 
-export async function list() {
-  const [rows] = await pool.query(`SELECT ${PUBLIC_COLUMNS} FROM Users`);
-  return rows;
-}
-
 export async function get(id) {
   const [rows] = await pool.query(
     `SELECT ${PUBLIC_COLUMNS} FROM Users WHERE user_id = ?`,

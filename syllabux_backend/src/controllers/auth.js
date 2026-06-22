@@ -28,14 +28,31 @@ export async function register(req, res, next) {
 
 export async function login(req, res, next) {
   try {
-    const { email, password } = req.body ?? {};
+    const { email, password, remember_me } = req.body ?? {};
     if (!email || !password) {
       throw new HttpError(400, 'email and password are required');
     }
-    const result = await authService.login({ email, password });
+    if(typeof remember_me !== "boolean"){
+      throw new HttpError(400, 'Remember me should be boolean');
+    }
+    const result = await authService.login({ email, password, remember_me});
     if (!result) throw new HttpError(401, 'Invalid credentials');
     res.json(result);
   } catch (err) {
+    next(err);
+  }
+}
+
+export async function tokenValidator(req, res, next){
+  try{
+    const {token} = req.body ?? {};
+    if(!token || token.trim() === ''){
+      throw new HttpError(401, 'Invalid token');
+    }
+    const result = await authService.tokenValidator(token);
+    if (!result) throw new HttpError(401, 'Invalid token');
+    res.json(result);
+  }catch(error){
     next(err);
   }
 }

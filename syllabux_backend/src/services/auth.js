@@ -2,9 +2,8 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import pool from '../config/db.js';
 import { getByEmail } from './users.js';
+import crypto from 'crypto';
 
-// Number of bcrypt salt rounds. 12 is a strong default — ~250ms per hash on
-// modern hardware. Lower it (10) for tests if you need to speed things up.
 const BCRYPT_ROUNDS = 12;
 
 export async function register({
@@ -29,13 +28,25 @@ export async function register({
   return rows[0];
 }
 
-export async function login({ email, password }) {
+export async function login({ email, password, remember_me}) {
   const user = await getByEmail(email);
+  let remember_token = null;
   if (!user) return null;
-
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) return null;
-
+  if(remember_me){
+    remember_token = crypto.randomBytes(32).toString('hex');
+    const token_hash = crypto.createHash('sha256').update(remember_token).digest('hex');
+    try{
+        await pool.query(`
+          INSERT INTO RememberTokens(user_id, token_hash, expires_at)
+          VALUES(?, ?, DATE_ADD(NOW(), INTERVAL 30 DAY))`,
+          [user.user_id, token_hash]
+        );
+    }catch(error){
+        console.error("Failed to create remember token:", error);
+    }
+  }
   const token = jwt.sign(
     { sub: user.user_id, role: user.role },
     process.env.JWT_SECRET,
@@ -43,6 +54,7 @@ export async function login({ email, password }) {
   );
 
   return {
+    remember_token,
     token,
     user: {
       user_id: user.user_id,
@@ -52,4 +64,31 @@ export async function login({ email, password }) {
       role: user.role,
     },
   };
+}
+
+export async function tokenValidator(token){
+  let token_hash = crypto.createHash('sha256').update(token).digest('hex');
+  try{
+    const [rows] = await pool.query(`
+        SELECT  * FROM RememberTokens
+        WHERE token_hash = ?
+        AND expires_at > NOW()
+      `,  
+      [token_hash]
+    );
+    if(rows.length > 0){
+      return {
+        isValid: true,
+        mesage: 'The token is valid'
+      };
+    }else{
+      return {
+        isValid: false,
+        messages: 'The token is invalid'
+      };
+    }
+  }catch(error){
+    console.log("Error checking token: ", error);
+    return false;
+  }
 }
