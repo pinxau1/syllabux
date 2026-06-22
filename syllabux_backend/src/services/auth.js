@@ -3,8 +3,6 @@ import jwt from 'jsonwebtoken';
 import pool from '../config/db.js';
 import { getByEmail } from './users.js';
 
-// Number of bcrypt salt rounds. 12 is a strong default — ~250ms per hash on
-// modern hardware. Lower it (10) for tests if you need to speed things up.
 const BCRYPT_ROUNDS = 12;
 
 export async function register({

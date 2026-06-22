@@ -1,24 +1,7 @@
 import * as usersService from '../services/users.js';
 import { HttpError } from '../utils/httpError.js';
 
-export async function list(_req, res, next) {
-  try {
-    const users = await usersService.list();
-    res.json(users);
-  } catch (err) {
-    next(err);
-  }
-}
 
-export async function get(req, res, next) {
-  try {
-    const user = await usersService.get(req.params.id);
-    if (!user) throw new HttpError(404, 'User not found');
-    res.json(user);
-  } catch (err) {
-    next(err);
-  }
-}
 
 export async function create(req, res, next) {
   try {
